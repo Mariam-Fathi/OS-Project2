@@ -24,4 +24,7 @@ to match the number of CPUs available on whichever system our program is running
 
 
 # tests
-https://github.com/Mariam-Fathi/OS-Project2/issues/1#issue-1096710350
+
+
+![pzip test](https://user-images.githubusercontent.com/66404704/148614492-681d2449-b4b8-48e0-b73c-f078d1b616e6.jpeg)
+
