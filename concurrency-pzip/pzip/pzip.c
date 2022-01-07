@@ -1,4 +1,5 @@
 ///////////////////Libraries///////////////////////
+
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,32 +7,13 @@
 #include <sys/mman.h> //Library for mmap
 #include <pthread.h>
 #include <sys/stat.h> //Library for struct stat
-#include <sys/sysinfo.h>
+#include <sys/sysinfo.h> // Library for get_nprocs()
 #include <unistd.h>
+
 ///////////////////////////////////////////////////
 
-//////////////////////NOTES/////////////////////////////
-/*void *mmap(void *addr, size_t length, int prot, int flags,
-                  int fd, off_t offset);
-Struct stat contains:
-dev_t     st_dev     Device ID of device containing file. 
-ino_t     st_ino     File serial number. 
-mode_t    st_mode    Mode of file (see below). 
-nlink_t   st_nlink   Number of hard links to the file. 
-uid_t     st_uid     User ID of file. 
-gid_t     st_gid     Group ID of file. 
-[XSI][Option Start]
-dev_t     st_rdev    Device ID (if file is character or block special). 
-[Option End]
-off_t     st_size    For regular files, the file size in bytes. 
-                     For symbolic links, the length in bytes of the 
-                     pathname contained in the symbolic link. 
-Queue code and logic referenced from Professor Remzi's OS Book:
-http://pages.cs.wisc.edu/~remzi/Classes/537/Spring2018/Book/threads-cv.pdf
-*/
-//////////////////////////////////////////////////////////
-
 /////////////////GLOBAL VARIABLES////////////////////////
+
 int total_threads; //Total number of threads that will be created for consumer.
 int page_size; //Page size = 4096 Bytes
 int num_files; //Total number of the files passed as the arguments.
@@ -39,17 +21,18 @@ int isComplete=0; //Flag needed to wakeup any sleeping threads at the end of pro
 int total_pages; //required for the compressed output
 int q_head=0; //Circular queue head.
 int q_tail=0; //Circular queue tail.
-#define q_capacity 10 //Circular queue current size. We can not have static array 
-//for buf which size is given as a variable, so use define. (Stackoverflow)
+#define q_capacity 10  
 int q_size=0; //Circular queue capacity.
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER, filelock=PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t empty = PTHREAD_COND_INITIALIZER, fill = PTHREAD_COND_INITIALIZER;
 int* pages_per_file;
+
 /////////////////////////////////////////////////////////
 
 /////////////////STRUCTURES///////////////////////////////
 
 //Contains the compressed output
+
 struct output {
 	char* data;
 	int* count;
@@ -57,6 +40,7 @@ struct output {
 }*out;
 
 //Contains page specific data of a specific file.
+
 struct buffer {
     char* address; //Mapping address of the file_number file + page_number page
     int file_number; //File Number
@@ -65,16 +49,18 @@ struct buffer {
 }buf[q_capacity];
 
 //Contains file specific data for munmap
+
 struct fd{
 	char* addr;
 	int size;
 }*files;
+
 ////////////////////////////////////////////////////////
 
 /////////////////QUEUE Functions////////////////////////
 
-//buf is the Buffer queue. Queue capacity by default = 10
 //Add at q_head index of the circular queue. 
+
 void put(struct buffer b){
   	buf[q_head] = b; //Enqueue the buffer
   	q_head = (q_head + 1) % q_capacity;
@@ -82,6 +68,7 @@ void put(struct buffer b){
 }
 
 //Remove from q_tail index of the circular queue.
+
 struct buffer get(){
   	struct buffer b = buf[q_tail]; //Dequeue the buffer.
 	q_tail = (q_tail + 1) % q_capacity;
@@ -92,65 +79,67 @@ struct buffer get(){
 ////////////////////////////////////////////////////////
 
 ////////////////////////PRODUCER/////////////////////////
-//Reference for MMAP code: http://man7.org/linux/man-pages/man2/mmap.2.html
+
 //Producer function to memory map the files passed as arguments.
+
 void* producer(void *arg){
+	
 	//Step 1: Get the file.
+	
 	char** filenames = (char **)arg;
 	struct stat sb;
-	char* map; //mmap address
+	char* map; 				//mmap address
 	int file;
 	
 	//Step 2: Open the file
+	
 	for(int i=0;i<num_files;i++){
-		//printf("filename %s\n",filenames[i]);
-		file = open(filenames[i], O_RDONLY);
-		int pages_in_file=0; //Calculates the number of pages in the file. Number of pages = Size of file / Page size.
-		int last_page_size=0; //Variable required if the file is not page-alligned ie Size of File % Page size !=0
 		
-		if(file == -1){ //yikes , possible due to file not found?
+		file = open(filenames[i], O_RDONLY);
+		int pages_in_file=0; 			//Calculates the number of pages in the file. Number of pages = Size of file / Page size.
+		int last_page_size=0; 			//If the file is not page-alligned 
+		
+		if(file == -1){ 			// If file not found?
+			
 			printf("Error: File didn't open\n");
 			exit(1);
 		}
 
 		//Step 3: Get the file info.
-		if(fstat(file,&sb) == -1){ //yikes #2.
+		
+		if(fstat(file,&sb) == -1){
+			
 			close(file);
 			printf("Error: Couldn't retrieve file stats");
 			exit(1);
 		}
-		//Empty files - Test 5
-        	if(sb.st_size==0){
+		
+		
+        	if(sb.st_size==0){			//Empty files 
                		continue;
         	}
+		
 		//Step 4: Calculate the number of pages and last page size.
-		//st_size contains the size offset. 
-		pages_in_file=(sb.st_size/page_size);
-		//In case file is not page alligned, we'll need to assign an extra page.
-		if(((double)sb.st_size/page_size)>pages_in_file){ 
+		
+		
+		pages_in_file=(sb.st_size/page_size);		//st_size contains the size offset. 
+		
+		if(((double)sb.st_size/page_size)>pages_in_file){ 	//If the file is not page alligned, we will add an extra page.
+			
 			pages_in_file+=1;
 			last_page_size=sb.st_size%page_size;
 		}
-		else{ //Page alligned
+		
+		else{ 							//Page alligned
 			last_page_size=page_size;
 		}
+		
 		total_pages+=pages_in_file;
 		pages_per_file[i]=pages_in_file;
-		//Compressed output pointer. Re-allocates for every new page.
-		/*if(out==NULL){
-			out=malloc(total_pages*sizeof(struct output));
-		}
-		else{
-			struct output* newOut=realloc(out,sizeof(struct output)*total_pages);
-			if(newOut==NULL){
-				printf("Error: Problem with re-allocating\n");
-				exit(1);
-			}
-			else{
-				out=newOut;
-			}
-		}*/
+		
+		
 		//Step 5: Map the entire file.
+		
 		map = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, file, 0); //If addr is NULL, then the kernel chooses the (page-aligned) address
 		//at which to create the mapping. Source: man pages															  
 		if (map == MAP_FAILED) { //yikes #3,possibly due to no memory? --unmap needed then?
