@@ -140,50 +140,56 @@ void* producer(void *arg){
 		
 		//Step 5: Map the entire file.
 		
-		map = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, file, 0); //If addr is NULL, then the kernel chooses the (page-aligned) address
-		//at which to create the mapping. Source: man pages															  
-		if (map == MAP_FAILED) { //yikes #3,possibly due to no memory? --unmap needed then?
+		map = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, file, 0); 			//If addr is NULL, then the kernel chooses the address
+																	  
+		if (map == MAP_FAILED) { 
+			
 			close(file);
 			printf("Error mmapping the file\n");
 			exit(1);
     	}	
     	
-    	//Needed for munmap
-    	// files[i].addr=map;
-    	// files[i].size=sb.st_size;
-    	//Step 6: For all the pages in file, create a Buffer type data with the relevant information for the consumer.
+    	       //Step 6: For all the pages in file create a Buffer.
+		
 		for(int j=0;j<pages_in_file;j++){
+			
 			pthread_mutex_lock(&lock);
 			while(q_size==q_capacity){
-			    pthread_cond_broadcast(&fill); //Wake-up all the sleeping consumer threads.
-				pthread_cond_wait(&empty,&lock); //Call the consumer to start working on the queue.
+			    pthread_cond_broadcast(&fill); 				//Wake up all the sleeping consumer threads.
+				pthread_cond_wait(&empty,&lock); 			//Call the consumer to start working on the queue.
 			}
 			pthread_mutex_unlock(&lock);
+			
 			struct buffer temp;
-			if(j==pages_in_file-1){ //Last page, might not be page-alligned
+			
+			if(j==pages_in_file-1){ 					//Check if last page
+				
 				temp.last_page_size=last_page_size;
 			}
+			
 			else{
 				temp.last_page_size=page_size;
 			}
+			
 			temp.address=map;
 			temp.page_number=j;
 			temp.file_number=i;
-			map+=page_size; //Go to next page in the memory.
-			//possible race condition while changing size.
-			pthread_mutex_lock(&lock);
+			map+=page_size;							//Go to next page in the memory.
+			
+			pthread_mutex_lock(&lock);				       //possible race condition while changing size.
 			put(temp);
 			pthread_mutex_unlock(&lock);
 			pthread_cond_signal(&fill);
 		}
+		
 		//Step 7: Close the file.
+		
 		close(file);
 	}
-	//Possible race condition at isComplete?
-	isComplete=1; //When producer is done mapping.
-	//Debugging step: Program wasn't ending during some runtimes as consumer threads were waiting for work.
-	pthread_cond_broadcast(&fill); //Wake-up all the sleeping consumer threads.
-	//printf("producer exiting with queue_size %d\n",q_size);
+	
+	isComplete=1;									 //When producer is done mapping.
+	pthread_cond_broadcast(&fill); 							//Wake-up all the sleeping consumer threads.
+	
 	return 0;
 }
 /////////////////////////////////////////////////////////////////////////
@@ -191,75 +197,77 @@ void* producer(void *arg){
 ///////////////////////////CONSUMER/////////////////////////////////////
 
 //Compresses the buffer object.
+
 struct output RLECompress(struct buffer temp){
-	struct output compressed;    //define a var from type output
-	compressed.count=malloc(temp.last_page_size*sizeof(int));  // allocat a block of memory for compressed.count
-	char* tempString=malloc(temp.last_page_size);  // allocate a single block of memory with the specefic size for char* tempstring
-	int countIndex=0;    //intialate the countIndex with 0
-	for(int i=0;i<temp.last_page_size;i++){      
-		tempString[countIndex]=temp.address[i]; // put temp.adress[i] into the array called tempString
+	
+	struct output compressed;   
+	compressed.count=malloc(temp.last_page_size*sizeof(int));  			// allocat a block of memory for compressed.count
+	char* tempString=malloc(temp.last_page_size); 					// allocate a single block of memory with the specefic size for char* tempstring
+	int countIndex=0;    								//intialate the countIndex with 0
+	
+	for(int i=0;i<temp.last_page_size;i++){   
+		
+		tempString[countIndex]=temp.address[i]; 				// put temp.adress[i] into the array called tempString
 		compressed.count[countIndex]=1;    
-                 // loop for the repeated pages/objects
+                
 		while(i+1<temp.last_page_size && temp.address[i]==temp.address[i+1]){ 
+			
 			compressed.count[countIndex]++;
 			i++;
 		}
+		
 		countIndex++;
 	}
+	
 	compressed.size=countIndex;
-	compressed.data=realloc(tempString,countIndex); //data compressed
+	compressed.data=realloc(tempString,countIndex); 				//data compressed
 	return compressed;
 }
 
 
-//https://piazza.com/class/jcwd4786vss6ky?cid=571
-//You'll need some sort of variable to figure out where in the buffer you are in terms of bytes 
-//(i.e. where to add the next int or char). Each time you add an int to the buffer, 
-//you'll have to update that variable by 4, since an int is 4 bytes. Each time you add a char, 
-//you'll have to update the variable by 1 byte. At the end, the variable will also equal the size of the buffer. 
-//To use fwrite, you just need to pass in the buffer plus the size of the buffer, which is that variable.  
-/*
-// a simple example 
-char buffer[1000];
-int *p = &buffer[0];
-*p = 100;
-char *c = &buffer[4];
-*c = 'x';
-*/
 //Calculates the relative output position for the buffer object.
+
 int calculateOutputPosition(struct buffer temp){
+	
 	int position=0;
+	
 	//step 1: Find the relative file position of the buffer object.
+	
 	for(int i=0;i<temp.file_number;i++){
 		position+=pages_per_file[i];
 	}
-	//Step 2: Now we're at the index where the particular file begins, we need
-	//to find the page relative position
+	
+	//Step 2: Now we're at the index where the particular file begins, we need to find the page relative position
+	
 	position+=temp.page_number;
 	return position;
 }
 
 //Called by consumer threads to start memory compression
-//of the files in the queue 'buf'
+
 void *consumer(){
+	
 	do{
-		pthread_mutex_lock(&lock);  //lock the critical section
+		pthread_mutex_lock(&lock);  					//lock the critical section
 		while(q_size==0 && isComplete==0){
-		    pthread_cond_signal(&empty); // send a signal to producer that the buffer is empty 
-			pthread_cond_wait(&fill,&lock); //call the producer to start filling the queue.
+		    pthread_cond_signal(&empty); 				// send a signal to producer that the buffer is empty 
+		    pthread_cond_wait(&fill,&lock); 			       //call the producer to start filling the queue.
 		}
-		if(isComplete==1 && q_size==0){ //If producer is done mapping and there's nothing left in the queue.
-			pthread_mutex_unlock(&lock);   // unlock the critical section 
-			return NULL;    // nothing left in the queue to consume
+		if(isComplete==1 && q_size==0){ 				//If producer is done mapping and there's nothing left in the queue.
+			pthread_mutex_unlock(&lock);  				 // unlock the critical section 
+			return NULL;    					// nothing left in the queue to consume
 		}
-		struct buffer temp=get();    // get elements from the buffer and put them in temp of a type buffer
+		
+		struct buffer temp=get();   					 // get elements from the buffer and put them in temp 
+		
 		if(isComplete==0){
-		    pthread_cond_signal(&empty);  // send signal to producer the buffer is empty
+		    pthread_cond_signal(&empty);  				// send signal to producer the buffer is empty
 		}	
 		pthread_mutex_unlock(&lock);
-		//Output position calculation
-		int position=calculateOutputPosition(temp);  // to indixed the position to compress
-		out[position]=RLECompress(temp);   // compress  the position indexed
+		
+		
+		int position=calculateOutputPosition(temp);  			// to indixed the position to compress
+		out[position]=RLECompress(temp);   		// compress  the position indexed
 	}while(!(isComplete==1 && q_size==0));
 	return NULL;
 }
@@ -267,7 +275,7 @@ void *consumer(){
 
 ///////////////////////////Main/////////////////////////////////////////
 
-//https://piazza.com/class/jcwd4786vss6ky?cid=571
+
 void printOutput(){
 	char* finalOutput=malloc(total_pages*page_size*(sizeof(int)+sizeof(char)));
     char* init=finalOutput; //contains the starting point of finalOutput pointer
