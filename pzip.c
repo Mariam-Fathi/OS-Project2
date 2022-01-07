@@ -203,21 +203,22 @@ void* producer(void *arg){
 
 //Compresses the buffer object.
 struct output RLECompress(struct buffer temp){
-	struct output compressed;
-	compressed.count=malloc(temp.last_page_size*sizeof(int));
-	char* tempString=malloc(temp.last_page_size);
-	int countIndex=0;
-	for(int i=0;i<temp.last_page_size;i++){
-		tempString[countIndex]=temp.address[i];
-		compressed.count[countIndex]=1;
-		while(i+1<temp.last_page_size && temp.address[i]==temp.address[i+1]){
+	struct output compressed;    //define a var from type output
+	compressed.count=malloc(temp.last_page_size*sizeof(int));  // allocat a block of memory for compressed.count
+	char* tempString=malloc(temp.last_page_size);  // allocate a single block of memory with the specefic size for char* tempstring
+	int countIndex=0;    //intialate the countIndex with 0
+	for(int i=0;i<temp.last_page_size;i++){      
+		tempString[countIndex]=temp.address[i]; // put temp.adress[i] into the array called tempString
+		compressed.count[countIndex]=1;    
+                 // loop for the repeated pages/objects
+		while(i+1<temp.last_page_size && temp.address[i]==temp.address[i+1]){ 
 			compressed.count[countIndex]++;
 			i++;
 		}
 		countIndex++;
 	}
 	compressed.size=countIndex;
-	compressed.data=realloc(tempString,countIndex);
+	compressed.data=realloc(tempString,countIndex); //data compressed
 	return compressed;
 }
 
@@ -253,27 +254,26 @@ int calculateOutputPosition(struct buffer temp){
 //of the files in the queue 'buf'
 void *consumer(){
 	do{
-		pthread_mutex_lock(&lock);
+		pthread_mutex_lock(&lock);  //lock the critical section
 		while(q_size==0 && isComplete==0){
-		    pthread_cond_signal(&empty);
+		    pthread_cond_signal(&empty); // send a signal to producer that the buffer is empty 
 			pthread_cond_wait(&fill,&lock); //call the producer to start filling the queue.
 		}
 		if(isComplete==1 && q_size==0){ //If producer is done mapping and there's nothing left in the queue.
-			pthread_mutex_unlock(&lock);
-			return NULL;
+			pthread_mutex_unlock(&lock);   // unlock the critical section 
+			return NULL;    // nothing left in the queue to consume
 		}
-		struct buffer temp=get();
+		struct buffer temp=get();    // get elements from the buffer and put them in temp of a type buffer
 		if(isComplete==0){
-		    pthread_cond_signal(&empty);
+		    pthread_cond_signal(&empty);  // send signal to producer the buffer is empty
 		}	
 		pthread_mutex_unlock(&lock);
 		//Output position calculation
-		int position=calculateOutputPosition(temp);
-		out[position]=RLECompress(temp);
+		int position=calculateOutputPosition(temp);  // to indixed the position to compress
+		out[position]=RLECompress(temp);   // compress  the position indexed
 	}while(!(isComplete==1 && q_size==0));
 	return NULL;
 }
-
 ////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////Main/////////////////////////////////////////
