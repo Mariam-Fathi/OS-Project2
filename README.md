@@ -20,3 +20,8 @@ number of 5-byte entries, each of which is comprised of a 4-byte integer and the
 • To determine the number of threads to create. On Linux, the determination of the number of
 threads may refer to some interfaces like get_nprocs() and get_nprocs_conf();. Then, we are required to create an appropriate number of threads
 to match the number of CPUs available on whichever system our program is running.
+
+
+
+# tests
+https://github.com/Mariam-Fathi/OS-Project2/issues/1#issue-1096710350
