@@ -17,15 +17,18 @@ The tool would turn it into: 10a4b
 Here, we will write out a 4-byte integer in binary format followed by the single character in ASCII. Thus, a compressed file will consist of some
 number of 5-byte entries, each of which is comprised of a 4-byte integer and the single character.
 
-• To determine the number of threads to create. On Linux, the determination of the number of
+# get_nprocs() function
+
+
+To determine the number of threads to create. On Linux, the determination of the number of
 threads may refer to some interfaces like get_nprocs() and get_nprocs_conf();. Then, we are required to create an appropriate number of threads
 to match the number of CPUs available on whichever system our program is running.
 
 
-#mmap() function
+# mmap() function
 
 
-•The mmap() function is used for mapping between a process address space and either files or devices.
+The mmap() function is used for mapping between a process address space and either files or devices.
 
 When a file is mapped to a process address space, the file can be accessed like an array in the program.
 
