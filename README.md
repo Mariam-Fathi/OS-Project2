@@ -27,20 +27,26 @@ to match the number of CPUs available on whichever system our program is running
 
 # mmap() function
 
+void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
 
 The mmap() function is used for mapping between a process address space and either files or devices.
 
 When a file is mapped to a process address space, the file can be accessed like an array in the program.
 
-The starting address for the new mapping is specified in addr.If addr is NULL, then the kernel chooses the (page-aligned) address at which to create the mapping.
+-include <sys/mman.h> : Library for mmap
 
-The length argument specifies the length of the mapping.
+-The starting address for the new mapping is specified in addr.If addr is NULL, then the kernel chooses the (page-aligned) address at which to create the mapping.
 
-The prot argument describes the desired memory protection
+-The length argument specifies the length of the mapping.
+
+-The prot argument describes the desired memory protection
+
+-The flags argument determines whether updates to the mapping are visible to other processes mapping the same region, and whether updates are carried through to the underlying file. 
+
 
 char* map = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, file, 0);
 
-include <sys/mman.h> : Library for mmap
+
 PROT_READ: Pages may be read.
 
 MAP_SHARED:   Share this mapping.  Updates to the mapping are visible to
