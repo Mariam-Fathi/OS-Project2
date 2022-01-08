@@ -302,21 +302,6 @@ void printOutput(){
 	fwrite(init,finalOutput-init,1,stdout);
 }
 
-void freeMemory(){
-	// for(int i=0;i<num_files;i++){
-	// 	if(munmap(files[i].addr,files[i].size)){
-	// 		printf("munmap failed\n");
-	// 		exit(1);
-	// 	}
-	// }
-	free(pages_per_file);
-	for(int i=0;i<total_pages;i++){
-		free(out[i].data);
-		free(out[i].count);
-	}
-	free(out);
-
-}
 
 int main(int argc, char* argv[]){
 	//Check if less than two arguments
@@ -354,7 +339,6 @@ int main(int argc, char* argv[]){
     }
     pthread_join(pid,NULL);
 	printOutput();
-	//freeMemory();
 	return 0;
 }
 //////////////////////////////////////////////////////////////////////////
