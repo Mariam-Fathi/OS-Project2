@@ -21,11 +21,15 @@ number of 5-byte entries, each of which is comprised of a 4-byte integer and the
 threads may refer to some interfaces like get_nprocs() and get_nprocs_conf();. Then, we are required to create an appropriate number of threads
 to match the number of CPUs available on whichever system our program is running.
 
+
+#mmap() function
+
+
 •The mmap() function is used for mapping between a process address space and either files or devices.
 
 When a file is mapped to a process address space, the file can be accessed like an array in the program.
 
-map = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, file, 0);
+char* map = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, file, 0);
 
 PROT_READ: Pages may be read.
 
