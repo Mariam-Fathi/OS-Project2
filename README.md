@@ -25,6 +25,8 @@ to match the number of CPUs available on whichever system our program is running
 
 When a file is mapped to a process address space, the file can be accessed like an array in the program.
 
+map = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, file, 0);
+
 PROT_READ: Pages may be read.
 
 MAP_SHARED:   Share this mapping.  Updates to the mapping are visible to
