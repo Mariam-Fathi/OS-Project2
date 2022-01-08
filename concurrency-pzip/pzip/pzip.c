@@ -277,9 +277,11 @@ void *consumer(){
 
 
 void printOutput(){
-	char* finalOutput=malloc(total_pages*page_size*(sizeof(int)+sizeof(char)));
-    char* init=finalOutput; //contains the starting point of finalOutput pointer
-	for(int i=0;i<total_pages;i++){
+
+     char* finalOutput=malloc(total_pages*page_size*(sizeof(int)+sizeof(char)));
+     char* init=finalOutput;     //contains the starting point of finalOutput pointer
+	
+         for(int i=0;i<total_pages;i++){
 		if(i<total_pages-1){
 			if(out[i].data[out[i].size-1]==out[i+1].data[0]){ //Compare i'th output's last character with the i+1th output's first character
 				out[i+1].count[0]+=out[i].count[out[i].size-1];
@@ -288,45 +290,41 @@ void printOutput(){
 		}
 		
 		for(int j=0;j<out[i].size;j++){
+
 			int num=out[i].count[j];
 			char character=out[i].data[j];
 			*((int*)finalOutput)=num;
 			finalOutput+=sizeof(int);
 			*((char*)finalOutput)=character;
-            finalOutput+=sizeof(char);
-			//printf("%d%c\n",num,character);
-			//fwrite(&num,sizeof(int),1,stdout);
-			//fwrite(&character,sizeof(char),1,stdout);
+                        finalOutput+=sizeof(char);
+			
 		}
 	}
+
 	fwrite(init,finalOutput-init,1,stdout);
 }
 
 
 int main(int argc, char* argv[]){
+
 	//Check if less than two arguments
 	if(argc<2){
 		printf("pzip: file1 [file2 ...]\n");
 		exit(1);
 	}
 
-	//Initialize all the global Variables.
-	//I took 4096 as page size but the program was running very slow,
-	//started trying out with huge random values, program execution
-	//decreased by atleast 1/4
-	page_size = 10000000;//sysconf(_SC_PAGE_SIZE); //4096 bytes
+	
+	
+	page_size = 10000000;
 	num_files=argc-1; //Number of files, needed for producer.
 	total_threads=get_nprocs(); //Number of processes consumer threads 
 	pages_per_file=malloc(sizeof(int)*num_files); //Pages per file.
 	
-	//files=malloc(sizeof(struct fd)*num_files);
-	//Initially I was re-allocing out everytime to increase the size,
-	//but it lead to a race condition where consumer tried to put compressed
-	//output into an unallocated space.
-    out=malloc(sizeof(struct output)* 512000*2); 
-	//Create producer thread to map all the files.
+	
+        out=malloc(sizeof(struct output)* 512000*2); 
+	
 	pthread_t pid,cid[total_threads];
-	pthread_create(&pid, NULL, producer, argv+1); //argv + 1 to skip argv[0].
+	pthread_create(&pid, NULL, producer, argv+1);  //argv + 1 to skip argv[0]
 
 	//Create consumer thread to compress all the pages per file.
 	for (int i = 0; i < total_threads; i++) {
