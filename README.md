@@ -1,9 +1,7 @@
-# OS-Project2
-
-pzip OS project
+# pzip OS project
 
 
-Description
+# Description
 
 For this project, we will implement a parallel version of zip using threads.
 We 'll use the run-length encoding (RLE) as the basic technique.
@@ -45,18 +43,14 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
 
 -The flags argument determines whether updates to the mapping are visible to other processes mapping the same region, and whether updates are carried through to the underlying file. 
 
-We use 
-char* map = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, file, 0);
+We use [  char* map = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, file, 0);. ] in our code.
 
+sb.st_size : size of file will be mapped
 
 PROT_READ: Pages may be read.
 
-MAP_SHARED:   Share this mapping.  Updates to the mapping are visible to
-              other processes mapping the same region, and (in the case
-              of file-backed mappings) are carried through to the
-              underlying file.  (To precisely control when updates are
-              carried through to the underlying file requires the use of
-              msync(2).)
+MAP_SHARED:   Share this mapping. Updates to the mapping are visible to
+              other processes mapping the same region,
 
 # tests
 
