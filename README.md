@@ -32,8 +32,15 @@ The mmap() function is used for mapping between a process address space and eith
 
 When a file is mapped to a process address space, the file can be accessed like an array in the program.
 
+The starting address for the new mapping is specified in addr.If addr is NULL, then the kernel chooses the (page-aligned) address at which to create the mapping.
+
+The length argument specifies the length of the mapping.
+
+The prot argument describes the desired memory protection
+
 char* map = mmap(NULL, sb.st_size, PROT_READ, MAP_SHARED, file, 0);
 
+include <sys/mman.h> : Library for mmap
 PROT_READ: Pages may be read.
 
 MAP_SHARED:   Share this mapping.  Updates to the mapping are visible to
